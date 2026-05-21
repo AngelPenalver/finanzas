@@ -1,4 +1,3 @@
-import { injectDemoPeriodIfNeeded } from "./demo-period";
 import {
   createEmptyPeriod,
   getCurrentPeriodId,
@@ -43,6 +42,16 @@ type LegacyState = FinanzasState & {
   purchases?: Purchase[];
 };
 
+function isDemoPeriodData(period: PeriodData): boolean {
+  const hasDemo = (items: { id: string }[]) =>
+    items.some((x) => x.id.startsWith("demo-"));
+  return (
+    hasDemo(period.incomes) ||
+    hasDemo(period.payments) ||
+    hasDemo(period.purchases)
+  );
+}
+
 function lockPeriodRates(
   period: PeriodData,
   global: Pick<FinanzasState, "p2pRate" | "bcvRate">
@@ -66,7 +75,9 @@ export function ensurePeriods(raw: Partial<LegacyState>): FinanzasState {
     periods: [],
   };
 
-  let periods: PeriodData[] = (raw.periods ?? []).map(normalizePeriod);
+  let periods: PeriodData[] = (raw.periods ?? [])
+    .map(normalizePeriod)
+    .filter((p) => !isDemoPeriodData(p));
 
   if (periods.length === 0 && (raw.incomes || raw.payments || raw.purchases)) {
     periods = [
@@ -92,7 +103,6 @@ export function ensurePeriods(raw: Partial<LegacyState>): FinanzasState {
     ];
   }
 
-  periods = injectDemoPeriodIfNeeded(periods);
   periods = sortPeriods(periods).map((p) => lockPeriodRates(p, base));
 
   return { ...base, periods };

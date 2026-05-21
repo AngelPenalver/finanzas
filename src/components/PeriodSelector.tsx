@@ -1,6 +1,5 @@
 "use client";
 
-import { isDemoPeriod } from "@/lib/demo-period";
 import {
   formatPeriodLabel,
   getCurrentPeriodId,
@@ -57,9 +56,7 @@ export function PeriodSelector({ state, viewPeriodId, onSelect }: Props) {
                 </span>
               ) : locked ? (
                 <span className="mt-0.5 block text-[10px] opacity-70">
-                  {isDemoPeriod(period.id)
-                    ? "Prueba · solo lectura"
-                    : "Cerrada · solo lectura"}
+                  Cerrada · solo lectura
                 </span>
               ) : null}
             </button>

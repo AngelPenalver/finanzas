@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mis Finanzas VE
 
-## Getting Started
+App sencilla para controlar finanzas personales en Venezuela:
 
-First, run the development server:
+- **Ingresos** en USD/USDT (Binance P2P)
+- **Dos tasas separadas**: **P2P Binance** (~700+ Bs/USDT, más alto) y **BCV** (~520 Bs/USD, referencia oficial más baja)
+- Conversión a bolívares con ambas tasas visibles lado a lado
+- **Pagos** pendientes y pagados (USD o Bs)
+- **Lista de compras** con presupuesto estimado
+- **Resumen**: cuánto ingresaste, cuánto debes pagar/comprar y cuánto te queda
+
+Los datos se guardan en **localStorage** del navegador, **organizados por quincena** (1.ª = días 1–15, 2.ª = 16–fin de mes). Las quincenas pasadas quedan **bloqueadas** (solo lectura); solo la quincena actual se puede editar.
+
+## Desarrollo local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Desplegar en Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+No hace falta base de datos ni variables de entorno.
 
-## Learn More
+### Opción A — CLI (rápida)
 
-To learn more about Next.js, take a look at the following resources:
+En la carpeta del proyecto:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx vercel login
+npm run deploy
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+La primera vez pregunta nombre del proyecto y confirma. Al terminar verás la URL (ej. `https://finanzas-xxx.vercel.app`).
 
-## Deploy on Vercel
+### Opción B — GitHub + Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Crea un repo en GitHub y sube el código (`git push`).
+2. Entra en [vercel.com/new](https://vercel.com/new) → importa el repo.
+3. Framework: **Next.js** (auto). **Deploy**.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Cada `git push` a `main` puede redeplegar si activas eso en Vercel.
+
+## Tasa BCV
+
+La app consulta `https://ve.dolarapi.com/v1/dolares/oficial` vía la ruta `/api/bcv`. Puedes editar la tasa manualmente si la API falla.
+
+## Notas
+
+- **Ingresos USDT** → tasa **P2P** (Binance).
+- **Pagos y compras** → tasa **BCV**, salvo la **quincena** (marcar como P2P).
+- **Disponible** = ingresos USDT − obligaciones (cada ítem con su tasa).
+- Si abres la app en otro dispositivo o navegador, los datos no se sincronizan (por diseño, sin backend).

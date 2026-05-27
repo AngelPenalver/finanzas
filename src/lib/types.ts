@@ -30,18 +30,36 @@ export interface Purchase {
   date: string;
 }
 
+/** Abono a una deuda global registrado en una quincena específica. */
+export interface DebtPayment {
+  debtId: string;      // referencia a Debt.id
+  amountUsd: number;   // cuánto se abonó esta quincena en USD
+  date: string;
+}
+
 export interface PeriodData {
   id: string;
   incomes: Income[];
   payments: Payment[];
   purchases: Purchase[];
+  debtPayments: DebtPayment[];  // abonos a deudas en esta quincena
   /** Tasas al cerrar la quincena (para consulta histórica). */
   p2pRate: number | null;
   bcvRate: number | null;
 }
 
+/** Deuda global (no está ligada a ninguna quincena). */
+export interface Debt {
+  id: string;
+  description: string;
+  totalAmountUsd: number;  // monto original de la deuda en USD
+  createdAt: string;
+  paid: boolean;           // marcada manualmente como saldada
+}
+
 export interface FinanzasState {
   periods: PeriodData[];
+  debts: Debt[];           // deudas globales
   p2pRate: number | null;
   p2pUpdatedAt: string | null;
   bcvRate: number | null;
@@ -50,6 +68,7 @@ export interface FinanzasState {
 
 export const DEFAULT_STATE: FinanzasState = {
   periods: [],
+  debts: [],
   p2pRate: null,
   p2pUpdatedAt: null,
   bcvRate: null,

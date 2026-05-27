@@ -48,6 +48,7 @@ export function createEmptyPeriod(id: string): PeriodData {
     incomes: [],
     payments: [],
     purchases: [],
+    debtPayments: [],
     p2pRate: null,
     bcvRate: null,
   };

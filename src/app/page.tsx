@@ -8,9 +8,10 @@ import { RatesPanel } from "@/components/RatesPanel";
 import { IncomeSection } from "@/components/IncomeSection";
 import { PaymentsSection } from "@/components/PaymentsSection";
 import { PurchasesSection } from "@/components/PurchasesSection";
+import { DebtSection } from "@/components/DebtSection";
 import { TabButton } from "@/components/ui";
 
-type Tab = "resumen" | "ingresos" | "pagos" | "compras";
+type Tab = "resumen" | "ingresos" | "pagos" | "compras" | "deudas";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("resumen");
@@ -25,6 +26,7 @@ export default function Home() {
             incomes: period.incomes,
             payments: period.payments,
             purchases: period.purchases,
+            debtPayments: period.debtPayments ?? [],
             p2pRate: f.viewRates.p2pRate,
             bcvRate: f.viewRates.bcvRate,
           }
@@ -104,6 +106,9 @@ export default function Home() {
           <TabButton active={tab === "compras"} onClick={() => setTab("compras")}>
             Compras
           </TabButton>
+          <TabButton active={tab === "deudas"} onClick={() => setTab("deudas")}>
+            Deudas
+          </TabButton>
         </nav>
 
         {(tab === "resumen" || tab === "ingresos") && (
@@ -137,6 +142,20 @@ export default function Home() {
             onAdd={f.addPurchase}
             onToggle={f.togglePurchase}
             onRemove={f.removePurchase}
+          />
+        )}
+        {tab === "deudas" && (
+          <DebtSection
+            debts={f.state.debts}
+            allPeriods={f.state.periods}
+            currentDebtPayments={period.debtPayments ?? []}
+            bcvRate={f.viewRates.bcvRate}
+            readOnly={f.isReadOnly}
+            onAddDebt={f.addDebt}
+            onRemoveDebt={f.removeDebt}
+            onToggleDebtPaid={f.toggleDebtPaid}
+            onAddDebtPayment={f.addDebtPayment}
+            onRemoveDebtPayment={f.removeDebtPayment}
           />
         )}
       </main>

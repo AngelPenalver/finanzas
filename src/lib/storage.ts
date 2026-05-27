@@ -6,6 +6,7 @@ import {
 } from "./period";
 import {
   DEFAULT_STATE,
+  type Debt,
   type FinanzasState,
   type Payment,
   type PeriodData,
@@ -31,6 +32,7 @@ function normalizePeriod(period: PeriodData): PeriodData {
     incomes: period.incomes ?? [],
     payments: (period.payments ?? []).map(normalizePayment),
     purchases: (period.purchases ?? []).map(normalizePurchase),
+    debtPayments: period.debtPayments ?? [],
     p2pRate: period.p2pRate ?? null,
     bcvRate: period.bcvRate ?? null,
   };
@@ -40,6 +42,7 @@ type LegacyState = FinanzasState & {
   incomes?: PeriodData["incomes"];
   payments?: Payment[];
   purchases?: Purchase[];
+  debts?: Debt[];
 };
 
 function isDemoPeriodData(period: PeriodData): boolean {
@@ -72,6 +75,7 @@ export function ensurePeriods(raw: Partial<LegacyState>): FinanzasState {
     p2pUpdatedAt: raw.p2pUpdatedAt ?? null,
     bcvRate: raw.bcvRate ?? null,
     bcvUpdatedAt: raw.bcvUpdatedAt ?? null,
+    debts: raw.debts ?? [],
     periods: [],
   };
 
@@ -86,6 +90,7 @@ export function ensurePeriods(raw: Partial<LegacyState>): FinanzasState {
         incomes: raw.incomes ?? [],
         payments: (raw.payments ?? []).map(normalizePayment),
         purchases: (raw.purchases ?? []).map(normalizePurchase),
+        debtPayments: [],
         p2pRate: base.p2pRate,
         bcvRate: base.bcvRate,
       }),

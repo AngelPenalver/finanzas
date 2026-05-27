@@ -1,5 +1,7 @@
 import type {
   Currency,
+  Debt,
+  DebtPayment,
   Payment,
   PeriodData,
   Purchase,
@@ -10,9 +12,29 @@ export type CalcInput = {
   incomes: PeriodData["incomes"];
   payments: Payment[];
   purchases: Purchase[];
+  debtPayments: DebtPayment[];  // abonos de esta quincena
   p2pRate: number | null;
   bcvRate: number | null;
 };
+
+/**
+ * Calcula el saldo restante de una deuda sumando todos los abonos
+ * registrados en todos los períodos históricos.
+ */
+export function getDebtBalance(
+  debt: Debt,
+  allPeriods: PeriodData[]
+): number {
+  const totalPaid = allPeriods.reduce((sum, period) => {
+    return (
+      sum +
+      (period.debtPayments ?? []).reduce((s, dp) => {
+        return dp.debtId === debt.id ? s + dp.amountUsd : s;
+      }, 0)
+    );
+  }, 0);
+  return Math.max(0, debt.totalAmountUsd - totalPaid);
+}
 
 /** Bolívares según cada tasa (null si falta la tasa). Solo para ingresos USDT. */
 export type DualBs = { p2p: number | null; bcv: number | null };
@@ -145,7 +167,17 @@ export function getSummary(input: CalcInput) {
   const pendingPayments = sumPayments(input.payments, false, bcv, p2p);
   const pendingPurchases = sumPurchases(input.purchases, false, bcv, p2p);
 
-  const obligationsBs = pendingPayments.bsTotal + pendingPurchases.bsTotal;
+  // Abonos a deudas de esta quincena (en Bs a tasa BCV)
+  const totalDebtPaymentsUsd = (input.debtPayments ?? []).reduce(
+    (s, dp) => s + dp.amountUsd,
+    0
+  );
+  const totalDebtPaymentsBs = bcv > 0 ? totalDebtPaymentsUsd * bcv : 0;
+
+  const obligationsBs =
+    pendingPayments.bsTotal +
+    pendingPurchases.bsTotal +
+    totalDebtPaymentsBs;
   const obligationsBsBcv =
     pendingPayments.bsBcvOnly + pendingPurchases.bsBcvOnly;
   const obligationsBsP2p =
@@ -184,5 +216,7 @@ export function getSummary(input: CalcInput) {
     hasP2p: p2p > 0,
     hasBcv: bcv > 0,
     pendingP2pCount,
+    totalDebtPaymentsUsd,
+    totalDebtPaymentsBs,
   };
 }

@@ -15,6 +15,7 @@ import {
 import {
   DEFAULT_STATE,
   type Currency,
+  type Debt,
   type FinanzasState,
   type PeriodData,
   type RateType,
@@ -268,6 +269,76 @@ export function useFinanzas() {
     );
   }, []);
 
+  // ── Deudas globales ─────────────────────────────────────────────────────
+
+  const addDebt = useCallback((description: string, totalAmountUsd: number) => {
+    const entry: Debt = {
+      id: uid(),
+      description: description.trim(),
+      totalAmountUsd,
+      createdAt: new Date().toISOString(),
+      paid: false,
+    };
+    setState((s) => ({ ...s, debts: [entry, ...s.debts] }));
+  }, []);
+
+  const removeDebt = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      debts: s.debts.filter((d) => d.id !== id),
+      // Limpiar abonos hueérfanos en todos los períodos
+      periods: s.periods.map((p) => ({
+        ...p,
+        debtPayments: (p.debtPayments ?? []).filter((dp) => dp.debtId !== id),
+      })),
+    }));
+  }, []);
+
+  const toggleDebtPaid = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      debts: s.debts.map((d) =>
+        d.id === id ? { ...d, paid: !d.paid } : d
+      ),
+    }));
+  }, []);
+
+  /** Registra un abono a una deuda en la quincena activa. */
+  const addDebtPayment = useCallback(
+    (debtId: string, amountUsd: number) => {
+      if (isPeriodLocked(getCurrentPeriodId())) return;
+      setState((s) =>
+        updateCurrentPeriod(s, (p) => {
+          // Reemplaza el abono anterior de esta deuda en esta quincena si existe
+          const existing = (p.debtPayments ?? []).filter(
+            (dp) => dp.debtId !== debtId
+          );
+          return {
+            ...p,
+            debtPayments: [
+              ...existing,
+              { debtId, amountUsd, date: new Date().toISOString() },
+            ],
+          };
+        })
+      );
+    },
+    []
+  );
+
+  /** Elimina el abono de una deuda en la quincena activa. */
+  const removeDebtPayment = useCallback((debtId: string) => {
+    if (isPeriodLocked(getCurrentPeriodId())) return;
+    setState((s) =>
+      updateCurrentPeriod(s, (p) => ({
+        ...p,
+        debtPayments: (p.debtPayments ?? []).filter(
+          (dp) => dp.debtId !== debtId
+        ),
+      }))
+    );
+  }, []);
+
   return {
     state,
     hydrated,
@@ -294,5 +365,10 @@ export function useFinanzas() {
     addPurchase,
     togglePurchase,
     removePurchase,
+    addDebt,
+    removeDebt,
+    toggleDebtPaid,
+    addDebtPayment,
+    removeDebtPayment,
   };
 }

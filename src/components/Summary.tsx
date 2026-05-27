@@ -67,6 +67,11 @@ export function Summary({ periodId, data }: Props) {
               </span>
             </p>
             <p className="text-sm text-zinc-500">{formatBs(s.obligationsBs)}</p>
+            {s.totalDebtPaymentsUsd > 0 && (
+              <p className="mt-1 text-xs text-red-400/80">
+                incl. {formatUsd(s.totalDebtPaymentsUsd)} en abonos de deudas
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-2 text-sm text-amber-400/90">Configura tasa BCV</p>
@@ -74,6 +79,8 @@ export function Summary({ periodId, data }: Props) {
         <p className="mt-2 text-xs text-zinc-600">
           {data.payments.filter((p) => !p.paid).length} pagos +{" "}
           {data.purchases.filter((p) => !p.bought).length} compras
+          {(data.debtPayments ?? []).length > 0 &&
+            ` + ${data.debtPayments.length} abono${data.debtPayments.length !== 1 ? "s" : ""} a deudas`}
         </p>
       </Card>
 

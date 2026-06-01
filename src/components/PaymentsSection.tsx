@@ -53,7 +53,7 @@ export function PaymentsSection({
   const paid = payments.filter((p) => p.paid);
 
   return (
-    <Card>
+    <div>
       <h2 className="mb-1 text-sm font-semibold text-zinc-200">Pagos</h2>
       <p className="mb-3 text-xs text-zinc-500">
         Montos a <strong className="text-emerald-500/80">tasa BCV</strong>. La
@@ -140,7 +140,7 @@ export function PaymentsSection({
           />
         </div>
       ) : null}
-    </Card>
+    </div>
   );
 }
 

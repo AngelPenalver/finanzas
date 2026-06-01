@@ -39,7 +39,7 @@ export function IncomeSection({
     amount && parseFloat(amount) > 0 ? parseFloat(amount) : null;
 
   return (
-    <Card>
+    <div>
       <h2 className="mb-1 text-sm font-semibold text-zinc-200">
         Lo que ganas en Binance (USDT)
       </h2>
@@ -120,6 +120,6 @@ export function IncomeSection({
           ))
         )}
       </ul>
-    </Card>
+    </div>
   );
 }

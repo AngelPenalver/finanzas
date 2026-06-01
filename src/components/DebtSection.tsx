@@ -9,7 +9,6 @@ import { Button, Card, Input, Label } from "./ui";
 type Props = {
   debts: Debt[];
   allPeriods: PeriodData[];
-  /** Abonos de la quincena que se está viendo */
   currentDebtPayments: DebtPayment[];
   bcvRate: number | null;
   readOnly: boolean;
@@ -30,7 +29,6 @@ function DebtProgressBar({ pct }: { pct: number }) {
         : clamped >= 30
           ? "bg-amber-400"
           : "bg-red-500";
-
   return (
     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
       <div
@@ -41,6 +39,8 @@ function DebtProgressBar({ pct }: { pct: number }) {
   );
 }
 
+// ── Card de deuda con abono siempre visible ───────────────────────────────────
+
 type DebtCardProps = {
   debt: Debt;
   balance: number;
@@ -49,7 +49,7 @@ type DebtCardProps = {
   readOnly: boolean;
   onRemove: () => void;
   onTogglePaid: () => void;
-  onAddPayment: (amount: number) => void;
+  onSavePayment: (amount: number) => void;
   onRemovePayment: () => void;
 };
 
@@ -61,13 +61,13 @@ function DebtCard({
   readOnly,
   onRemove,
   onTogglePaid,
-  onAddPayment,
+  onSavePayment,
   onRemovePayment,
 }: DebtCardProps) {
+  // El input siempre muestra el abono registrado (o vacío si no hay)
   const [inputAmt, setInputAmt] = useState(
     currentPayment ? String(currentPayment.amountUsd) : ""
   );
-  const [editing, setEditing] = useState(false);
 
   const paidPct =
     debt.totalAmountUsd > 0
@@ -77,43 +77,53 @@ function DebtCard({
   const isSaldada = balance <= 0 || debt.paid;
   const balanceBs = bcvRate && bcvRate > 0 ? balance * bcvRate : null;
 
-  function handleSavePayment() {
-    const val = parseFloat(inputAmt.replace(",", "."));
-    if (!isNaN(val) && val > 0) {
-      onAddPayment(Math.min(val, balance));
-      setEditing(false);
-    }
+  const abonoNum = parseFloat(inputAmt.replace(",", "."));
+  const abonoValido = !isNaN(abonoNum) && abonoNum > 0;
+  const abonoBs =
+    abonoValido && bcvRate && bcvRate > 0 ? abonoNum * bcvRate : null;
+
+  // ¿El valor del input es distinto al guardado?
+  const changed =
+    abonoValido &&
+    (currentPayment === undefined || currentPayment.amountUsd !== abonoNum);
+
+  function handleGuardar() {
+    if (!abonoValido) return;
+    onSavePayment(Math.min(abonoNum, balance));
+  }
+
+  function handleQuitar() {
+    setInputAmt("");
+    onRemovePayment();
   }
 
   return (
-    <Card
-      className={`transition-opacity ${isSaldada ? "opacity-60" : ""}`}
-    >
-      {/* Header */}
+    <Card className={isSaldada ? "opacity-60" : ""}>
+      {/* Cabecera: nombre + acciones */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-zinc-100 truncate">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate font-medium text-zinc-100">
               {debt.description}
             </p>
             {isSaldada && (
-              <span className="rounded-full bg-emerald-900/50 px-2 py-0.5 text-[10px] text-emerald-400 shrink-0">
+              <span className="shrink-0 rounded-full bg-emerald-900/50 px-2 py-0.5 text-[10px] text-emerald-400">
                 ✓ Saldada
               </span>
             )}
           </div>
           <p className="mt-0.5 text-xs text-zinc-500">
-            Total original: {formatUsd(debt.totalAmountUsd)}
+            Deuda original: {formatUsd(debt.totalAmountUsd)}
           </p>
         </div>
 
-        <div className="flex gap-1 shrink-0">
+        <div className="flex shrink-0 gap-1">
           {!isSaldada && (
             <button
               type="button"
               onClick={onTogglePaid}
               title="Marcar como saldada"
-              className="rounded-lg px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-900/30 transition"
+              className="rounded-lg px-2 py-1 text-xs text-emerald-400 transition hover:bg-emerald-900/30"
             >
               ✓
             </button>
@@ -122,8 +132,8 @@ function DebtCard({
             <button
               type="button"
               onClick={onTogglePaid}
-              title="Desmarcar"
-              className="rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 transition"
+              title="Reactivar deuda"
+              className="rounded-lg px-2 py-1 text-xs text-zinc-500 transition hover:bg-zinc-800"
             >
               ↩
             </button>
@@ -132,14 +142,14 @@ function DebtCard({
             type="button"
             onClick={onRemove}
             title="Eliminar deuda"
-            className="rounded-lg px-2 py-1 text-xs text-red-400/70 hover:bg-red-900/30 hover:text-red-300 transition"
+            className="rounded-lg px-2 py-1 text-xs text-red-400/70 transition hover:bg-red-900/30 hover:text-red-300"
           >
             ✕
           </button>
         </div>
       </div>
 
-      {/* Saldo restante */}
+      {/* Saldo restante + barra */}
       <div className="mt-3 flex items-end justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-wide text-zinc-500">
@@ -158,88 +168,79 @@ function DebtCard({
           {paidPct.toFixed(0)}%
         </p>
       </div>
-
       <DebtProgressBar pct={paidPct} />
 
-      {/* Abono de esta quincena */}
+      {/* ── Sección de abono ── */}
       {!isSaldada && (
-        <div className="mt-4 border-t border-zinc-800 pt-3">
-          <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
-            Abono esta quincena
+        <div className="mt-4 rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-3">
+          <p className="mb-2 text-sm font-medium text-zinc-300">
+            ¿Cuánto abonará a esta deuda esta quincena?
           </p>
 
           {readOnly ? (
-            // Vista de solo lectura
+            // Solo lectura: muestra lo que se abonó en esa quincena
             currentPayment ? (
-              <p className="text-sm text-sky-300">
-                {formatUsd(currentPayment.amountUsd)} abonados
-              </p>
-            ) : (
-              <p className="text-xs text-zinc-600">Sin abono registrado</p>
-            )
-          ) : editing || !currentPayment ? (
-            // Formulario de edición
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0.00 USD"
-                value={inputAmt}
-                onChange={(e) => setInputAmt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSavePayment()}
-                className="flex-1"
-              />
-              <Button
-                variant="primary"
-                onClick={handleSavePayment}
-                className="shrink-0"
-              >
-                {currentPayment ? "Actualizar" : "Abonar"}
-              </Button>
-              {currentPayment && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setEditing(false)}
-                  className="shrink-0"
-                >
-                  Cancelar
-                </Button>
-              )}
-            </div>
-          ) : (
-            // Muestra el abono con opción de editar/quitar
-            <div className="flex items-center justify-between gap-2">
               <div>
-                <span className="text-sm font-semibold text-sky-300">
-                  {formatUsd(currentPayment.amountUsd)}
-                </span>
-                <span className="ml-1 text-xs text-zinc-500">abonados</span>
+                <p className="text-base font-semibold text-sky-300">
+                  {formatUsd(currentPayment.amountUsd)}{" "}
+                  <span className="text-xs font-normal text-zinc-500">
+                    abonados
+                  </span>
+                </p>
                 {bcvRate && bcvRate > 0 && (
                   <p className="text-xs text-zinc-600">
                     {formatBs(currentPayment.amountUsd * bcvRate)}
                   </p>
                 )}
               </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputAmt(String(currentPayment.amountUsd));
-                    setEditing(true);
-                  }}
-                  className="rounded-lg px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-800 transition"
+            ) : (
+              <p className="text-xs text-zinc-600">Sin abono en esta quincena</p>
+            )
+          ) : (
+            // Editable: input siempre visible
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00 USD"
+                  value={inputAmt}
+                  onChange={(e) => setInputAmt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleGuardar()}
+                />
+                <Button
+                  variant="primary"
+                  onClick={handleGuardar}
+                  disabled={!abonoValido || !changed}
+                  className="shrink-0"
                 >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  onClick={onRemovePayment}
-                  className="rounded-lg px-2 py-1 text-xs text-red-400/70 hover:bg-red-900/30 transition"
-                >
-                  Quitar
-                </button>
+                  {currentPayment ? "Actualizar" : "Abonar"}
+                </Button>
+                {currentPayment && (
+                  <button
+                    type="button"
+                    onClick={handleQuitar}
+                    className="shrink-0 rounded-xl px-3 text-xs text-red-400/70 transition hover:bg-red-900/30"
+                  >
+                    Quitar
+                  </button>
+                )}
               </div>
+
+              {/* Preview en Bs */}
+              {abonoBs !== null && (
+                <p className="text-xs text-zinc-500">
+                  = {formatBs(abonoBs)} a tasa BCV · saldrá de tu balance esta quincena
+                </p>
+              )}
+
+              {/* Indicador si ya hay abono guardado */}
+              {currentPayment && !changed && (
+                <p className="text-xs text-emerald-500/80">
+                  ✓ Abono registrado: {formatUsd(currentPayment.amountUsd)}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -269,7 +270,7 @@ function AddDebtForm({ onAdd }: { onAdd: (desc: string, amt: number) => void }) 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-700 py-3 text-sm text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-700 py-3 text-sm text-zinc-500 transition hover:border-zinc-500 hover:text-zinc-300"
       >
         <span className="text-lg leading-none">＋</span>
         Nueva deuda
@@ -331,19 +332,27 @@ export function DebtSection({
   onAddDebtPayment,
   onRemoveDebtPayment,
 }: Props) {
-  const activeDebts = debts.filter((d) => !d.paid && getDebtBalance(d, allPeriods) > 0);
-  const settledDebts = debts.filter((d) => d.paid || getDebtBalance(d, allPeriods) <= 0);
+  const activeDebts = debts.filter(
+    (d) => !d.paid && getDebtBalance(d, allPeriods) > 0
+  );
+  const settledDebts = debts.filter(
+    (d) => d.paid || getDebtBalance(d, allPeriods) <= 0
+  );
 
   const totalBalance = activeDebts.reduce(
     (sum, d) => sum + getDebtBalance(d, allPeriods),
     0
   );
-  const totalBalanceBs =
-    bcvRate && bcvRate > 0 ? totalBalance * bcvRate : null;
+  const totalBalanceBs = bcvRate && bcvRate > 0 ? totalBalance * bcvRate : null;
+
+  const totalAbonoEstaQuincena = currentDebtPayments.reduce(
+    (s, dp) => s + dp.amountUsd,
+    0
+  );
 
   return (
     <div className="space-y-3">
-      {/* Resumen de deudas activas */}
+      {/* Resumen global */}
       {activeDebts.length > 0 && (
         <Card className="border-red-900/40 bg-gradient-to-br from-red-950/30 to-zinc-900/80">
           <p className="text-xs uppercase tracking-wide text-red-400/80">
@@ -357,10 +366,17 @@ export function DebtSection({
               {formatBs(totalBalanceBs)}
             </p>
           )}
-          <p className="mt-1 text-xs text-zinc-600">
-            {activeDebts.length} deuda{activeDebts.length !== 1 ? "s" : ""} activa
-            {activeDebts.length !== 1 ? "s" : ""}
-          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <p className="text-xs text-zinc-600">
+              {activeDebts.length} deuda{activeDebts.length !== 1 ? "s" : ""} activa
+              {activeDebts.length !== 1 ? "s" : ""}
+            </p>
+            {totalAbonoEstaQuincena > 0 && (
+              <p className="text-xs text-sky-400">
+                · {formatUsd(totalAbonoEstaQuincena)} abonados esta quincena
+              </p>
+            )}
+          </div>
         </Card>
       )}
 
@@ -370,7 +386,7 @@ export function DebtSection({
         </p>
       )}
 
-      {/* Deudas activas */}
+      {/* Lista de deudas activas con abono */}
       {activeDebts.map((debt) => {
         const balance = getDebtBalance(debt, allPeriods);
         const currentPayment = currentDebtPayments.find(
@@ -386,23 +402,23 @@ export function DebtSection({
             readOnly={readOnly}
             onRemove={() => onRemoveDebt(debt.id)}
             onTogglePaid={() => onToggleDebtPaid(debt.id)}
-            onAddPayment={(amt) => onAddDebtPayment(debt.id, amt)}
+            onSavePayment={(amt) => onAddDebtPayment(debt.id, amt)}
             onRemovePayment={() => onRemoveDebtPayment(debt.id)}
           />
         );
       })}
 
-      {/* Nueva deuda (solo en quincena activa) */}
+      {/* Botón nueva deuda */}
       {!readOnly && <AddDebtForm onAdd={onAddDebt} />}
 
-      {/* Deudas saldadas */}
+      {/* Deudas saldadas colapsadas */}
       {settledDebts.length > 0 && (
         <details className="group">
-          <summary className="cursor-pointer select-none list-none px-1 text-xs text-zinc-600 hover:text-zinc-400 transition">
+          <summary className="cursor-pointer select-none list-none px-1 text-xs text-zinc-600 transition hover:text-zinc-400">
             <span className="group-open:hidden">▶</span>
-            <span className="hidden group-open:inline">▼</span>
-            {" "}{settledDebts.length} deuda{settledDebts.length !== 1 ? "s" : ""} saldada
-            {settledDebts.length !== 1 ? "s" : ""}
+            <span className="hidden group-open:inline">▼</span>{" "}
+            {settledDebts.length} deuda{settledDebts.length !== 1 ? "s" : ""}{" "}
+            saldada{settledDebts.length !== 1 ? "s" : ""}
           </summary>
           <div className="mt-2 space-y-2">
             {settledDebts.map((debt) => {
@@ -420,7 +436,7 @@ export function DebtSection({
                   readOnly={readOnly}
                   onRemove={() => onRemoveDebt(debt.id)}
                   onTogglePaid={() => onToggleDebtPaid(debt.id)}
-                  onAddPayment={(amt) => onAddDebtPayment(debt.id, amt)}
+                  onSavePayment={(amt) => onAddDebtPayment(debt.id, amt)}
                   onRemovePayment={() => onRemoveDebtPayment(debt.id)}
                 />
               );

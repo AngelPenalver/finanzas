@@ -39,7 +39,7 @@ export function PurchasesSection({
   }
 
   return (
-    <Card>
+    <div>
       <h2 className="mb-1 text-sm font-semibold text-zinc-200">
         Lista de compras
       </h2>
@@ -143,6 +143,6 @@ export function PurchasesSection({
           ))
         )}
       </ul>
-    </Card>
+    </div>
   );
 }

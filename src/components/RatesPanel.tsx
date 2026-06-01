@@ -42,7 +42,7 @@ export function RatesPanel({
     bcv && p2p && p2p > bcv ? formatBs((p2p - bcv) * 100) : null;
 
   return (
-    <Card>
+    <div>
       <h2 className="mb-1 text-sm font-semibold text-zinc-200">
         Tasas {readOnly ? "(consulta)" : "de la quincena actual"}
       </h2>
@@ -183,6 +183,6 @@ export function RatesPanel({
           {formatRate(bcv)}). Revisa: en Binance P2P suele ser 700+ y BCV ~520.
         </p>
       ) : null}
-    </Card>
+    </div>
   );
 }
